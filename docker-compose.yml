@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+    backend:
+        build:
+            context: ./backend
+            dockerfile: Dockerfile
+        container_name: taskmanager-backend
+        ports:
+            - '${PORT}:${PORT}'
+        env_file:
+            - .env
+        depends_on:
+            postgres-db:
+                condition: service_healthy
+
+    postgres-db:
+        image: postgres:15.3
+        restart: always
+        container_name: taskmanager-postgres
+        env_file:
+            - .env
+        environment:
+            POSTGRES_USER: ${DATABASE_USERNAME}
+            POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+            POSTGRES_DB: ${DATABASE_NAME}
+        ports:
+            - '5432:5432'
+        volumes:
+            - ./backend/postgres:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME}']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile
+        container_name: taskmanager-frontend
+        env_file:
+            - .env
+        ports:
+            - '5174:80'
+        depends_on:
+            - backend
